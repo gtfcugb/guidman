@@ -1,0 +1,58 @@
+GUID是一个在线全局唯一id产生系统，本系统是基于fishnet框架开发，具体高并发、高性能、持久化功能。
+
+主要特点
+    持久化
+        持久化采用的是mmap映射（类似mongodb机制），这样的话，所有的操作是内存操作，速度非常快。
+        文件的数据格式比较简单：首先是key然后是\n接着是id的内存值（8个字节）（不是id的字符串表示）然后是\n
+        key1\n
+        2\n
+        key2\n
+        3
+    速度快
+        qps达到11万
+    
+    
+主要功能
+    支持get\check\list命令
+        get     获取一个key的id值，id是以可配置的step来自增的
+        check   获取一个key的id值，id保持不变
+        list    获取所有的key的id值，id保持不变
+    
+    todo 支持gets checks 操作
+
+如何配置
+    作为upman配置在netman中
+        {
+            ENGINE          = "dl",
+            SCRIPT_FILE     =   "/code/fishnet/src/dl/guid/guid.so",
+            --确保文件存在
+            SCRIPT_PARAM    =   "/code/fishnet/src/dl/guid/id.dat",
+            EXTRA_HASH      =   {
+                --持久化文件最大长度
+                GUID_FILESIZE_MAX   =   102400,
+                --持久化文件sysc时间间隔10秒
+                GUID_MMAP_SYSC      =   10,
+                --id的key的最大长度
+                GUID_KEY_LEN_MAX    =   32
+            },
+            PRENAME         =   "guid",
+            MARKS           =   {"guid"} 
+        }
+
+关于单点问题
+    1、系统产生的id是自增的，这样应用可根据id来排序，如果不需要这个功能，可以通过步长不一样来实现多机同时服务
+    2、如果仍需要使用id自增的特性，则可以实时同步持久化文件，发现某个节点over，则启动新的节点，为了预防节点宕机的临界问题，则可以跳过一定数量的id
+
+协议格式举例
+    [request]
+    S*guid*get*0*5
+    memca
+    [response]
+    S*guid*get*1*
+    6
+
+
+    S*guid*check*0*8
+    sdseffff
+  
+    S*guid*list*0*0
